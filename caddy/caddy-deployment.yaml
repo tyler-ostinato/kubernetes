@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: caddy
+  labels:
+    app: caddy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: caddy
+  template:
+    metadata:
+      labels:
+        app: caddy
+    spec:
+      containers:
+      - name: caddy
+        image: caddy:2-alpine
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https
+        env:
+        - name: TLS_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: caddy-env
+              key: TLS_EMAIL
+        - name: MY_DOMAIN
+          valueFrom:
+            secretKeyRef:
+              name: caddy-env
+              key: MY_DOMAIN
+        - name: TZ
+          value: "America/New_York"
+        volumeMounts:
+        - name: caddy-config
+          mountPath: /etc/caddy/Caddyfile
+          subPath: Caddyfile
+        - name: caddy-data
+          mountPath: /data
+        - name: caddy-config-data
+          mountPath: /config
+        - name: caddy-logs
+          mountPath: /var/log/caddy
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: caddy-config
+        configMap:
+          name: caddy-config
+      - name: caddy-data
+        emptyDir: {}  # For minikube, use emptyDir. For production, use PersistentVolumeClaim
+      - name: caddy-config-data
+        emptyDir: {}  # For minikube, use emptyDir. For production, use PersistentVolumeClaim
+      - name: caddy-logs
+        emptyDir: {}  # For minikube, use emptyDir. For production, use PersistentVolumeClaim

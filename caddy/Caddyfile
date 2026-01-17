@@ -1,0 +1,65 @@
+# Caddyfile for Self-Hosted Applications
+# Uses environment variables for better maintainability
+
+# Global options
+{
+	# Email for Let's Encrypt certificates
+	email {$TLS_EMAIL}
+
+	# Auto HTTPS
+	acme_ca https://acme-v02.api.letsencrypt.org/directory
+
+	# Logging
+	log {
+		output file /var/log/caddy/access.log
+		format json
+	}
+}
+
+# Portainer
+portainer.{$MY_DOMAIN} {
+	reverse_proxy portainer:9000
+	log {
+		output file /var/log/caddy/portainer.log
+	}
+}
+
+# Radarr
+radarr.{$MY_DOMAIN} {
+	reverse_proxy radarr:7878
+	log {
+		output file /var/log/caddy/radarr.log
+	}
+}
+
+# Sonarr
+sonarr.{$MY_DOMAIN} {
+	reverse_proxy sonarr:8989
+	log {
+		output file /var/log/caddy/sonarr.log
+	}
+}
+
+# Jellyfin
+jellyfin.{$MY_DOMAIN} {
+	reverse_proxy jellyfin:8096
+	log {
+		output file /var/log/caddy/jellyfin.log
+	}
+}
+
+# Home Assistant
+ha.{$MY_DOMAIN} {
+	reverse_proxy homeassistant:8123
+	log {
+		output file /var/log/caddy/ha.log
+	}
+}
+
+# Grafana
+grafana.{$MY_DOMAIN} {
+	reverse_proxy grafana:3000
+	log {
+		output file /var/log/caddy/grafana.log
+	}
+}
