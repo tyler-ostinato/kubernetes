@@ -10,18 +10,9 @@ spec:
   
   # Source configuration
   # 
-  # LOCAL DEVELOPMENT: Using file:// protocol for local Git repository
-  # This works for local development in minikube.
-  # For production, update to a remote Git repository URL.
-  #
-  # To move to GitHub/GitLab later:
-  # 1. Push this repository: git remote add origin <your-repo-url>
-  # 2. Update repoURL below to your remote repository URL
-  # 3. Apply: kubectl apply -f argocd/argocd-caddy-application.yaml
+  # Using GitHub repository: https://github.com/tyler-ostinato/kubernetes
   source:
-    # For local development - using host path mounted into minikube
-    # The repo-server will access this via a mounted volume
-    repoURL: 'file:///tmp/local-git-repo'
+    repoURL: 'https://github.com/tyler-ostinato/kubernetes.git'
     targetRevision: 'master'
     path: 'caddy'
   
