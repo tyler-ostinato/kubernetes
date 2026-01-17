@@ -1,0 +1,40 @@
+# Template for creating an ArgoCD Application that manages your nginx deployment
+# This is a template - copy and customize for your own Git repository
+#
+# STEPS TO USE:
+# 1. Create a Git repository and push nginx-deployment.yaml to it
+# 2. Copy this file and update the values below
+# 3. Apply with: kubectl apply -f <your-customized-file>.yaml
+#
+# EXAMPLE: If your repo is https://github.com/yourusername/k8s-manifests.git
+#   and nginx-deployment.yaml is in the root directory:
+#   - repoURL: 'https://github.com/yourusername/k8s-manifests.git'
+#   - targetRevision: 'main'
+#   - path: '.'
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Update these three fields with your Git repository details:
+  source:
+    repoURL: 'https://github.com/yourusername/your-repo.git'  # YOUR GIT REPO URL
+    targetRevision: 'main'  # YOUR BRANCH (main, master, etc.)
+    path: '.'  # PATH TO YOUR MANIFESTS IN THE REPO ('.' for root, or 'manifests' for subdirectory)
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

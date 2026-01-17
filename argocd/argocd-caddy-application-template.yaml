@@ -1,0 +1,35 @@
+# TEMPLATE: This is a template for creating a Caddy ArgoCD Application
+# DO NOT apply this file as-is if it points to the guestbook example - it will conflict with nginx
+# 
+# CURRENT STATUS: Disabled - both nginx and caddy are currently pointing to the same example repository
+# which causes conflicts. Enable this only when you have your own Git repository set up.
+#
+# TO USE:
+# 1. Create a Git repository with your Caddy manifests
+# 2. Update repoURL, targetRevision, and path below
+# 3. Uncomment the YAML below and apply: kubectl apply -f argocd/argocd-caddy-application-template.yaml
+#    OR copy this file to argocd-caddy-application.yaml with your values
+
+# ---
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: caddy
+#   namespace: argocd
+#   finalizers:
+#     - resources-finalizer.argocd.argoproj.io
+# spec:
+#   project: default
+#   source:
+#     repoURL: 'https://github.com/yourusername/kubernetes-manifests.git'  # UPDATE THIS
+#     targetRevision: 'main'  # UPDATE THIS
+#     path: 'caddy'  # UPDATE THIS - path to your caddy manifests in the repo
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: default
+#   syncPolicy:
+#     automated:
+#       prune: true
+#       selfHeal: true
+#     syncOptions:
+#       - CreateNamespace=true

@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx
+  namespace: argocd
+  # Finalizers ensure proper cleanup when the Application is deleted
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Source configuration
+  # 
+  # IMPORTANT: ArgoCD requires a Git repository URL. 
+  # 
+  # TEMPORARY: Currently using an example Git repo for demonstration.
+  # The Application will appear in ArgoCD UI, but it's syncing the "guestbook" example app.
+  #
+  # TO USE YOUR NGINX MANIFESTS:
+  # 1. Create a Git repository (GitHub/GitLab/Bitbucket/etc)
+  # 2. Push nginx-deployment.yaml to your repository
+  # 3. Update the three lines below (repoURL, targetRevision, path)
+  # 4. Apply the updated manifest: kubectl apply -f argocd-nginx-application.yaml
+  #
+  # EXAMPLE - Replace these values:
+  #   repoURL: 'https://github.com/yourusername/kubernetes-manifests.git'
+  #   targetRevision: 'main'  # or 'master', or a specific branch/tag
+  #   path: '.'  # or 'manifests' if you organize in a subdirectory
+  source:
+    repoURL: 'https://github.com/argoproj/argocd-example-apps.git'
+    targetRevision: HEAD
+    path: 'guestbook'
+  
+  # Destination where to deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  # Sync policy configuration
+  syncPolicy:
+    automated:
+      # Automatically sync when changes are detected
+      prune: true  # Remove resources that are no longer defined in Git
+      selfHeal: true  # Automatically sync if live state deviates from Git state
+    syncOptions:
+      - CreateNamespace=true  # Automatically create namespace if it doesn't exist
+    # Uncomment for manual sync only:
+    # syncPolicy: {}
