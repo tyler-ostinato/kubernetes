@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: caddy
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Source configuration
+  # For local development, we'll use a local Git repository
+  # In production, update this to point to your remote Git repository
+  source:
+    repoURL: 'file:///home/tostinat/development/kubernetes'
+    targetRevision: HEAD
+    path: 'caddy'
+  
+  # Destination where to deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  # Sync policy configuration
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
