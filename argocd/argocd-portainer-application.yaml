@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portainer
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  # Source configuration
+  # Using GitHub repository: https://github.com/tyler-ostinato/kubernetes
+  source:
+    repoURL: 'https://github.com/tyler-ostinato/kubernetes.git'
+    targetRevision: 'master'
+    path: 'portainer'
+  
+  # Destination where to deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  
+  # Sync policy configuration
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

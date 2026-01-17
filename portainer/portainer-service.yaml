@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer
+  labels:
+    app: portainer
+spec:
+  selector:
+    app: portainer
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+      name: http
+  type: ClusterIP
