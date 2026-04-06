@@ -164,16 +164,96 @@ spec:
               value: DEBUG
 ```
 
-**Volumes:** If the app needs persistent storage, add a PersistentVolumeClaim manifest (`k8s/pvc.yaml`) and mount it:
+**Volumes:** If the app needs persistent storage, add a `k8s/pvc.yaml` with a static PV backed by a host directory, and mount it. There are two cases:
+
+**Config volume** (`/config`) — backed by the app's local `configs/` directory so settings persist across cluster resets automatically:
 
 ```yaml
           volumeMounts:
-            - name: data
-              mountPath: /data
+            - name: config
+              mountPath: /config
       volumes:
-        - name: data
+        - name: config
           persistentVolumeClaim:
-            claimName: <app-name>-data
+            claimName: <app-name>-config
+```
+
+`k8s/pvc.yaml`:
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: <app-name>-config
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  hostPath:
+    path: /home/tostinat/development/<app-name>/configs
+  claimRef:
+    name: <app-name>-config
+    namespace: <app-name>
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: <app-name>-config
+  namespace: <app-name>
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: ""
+  volumeName: <app-name>-config
+```
+
+Then add the path to `extraMounts` in `~/development/kubernetes/kind-config.yaml` (requires cluster reset if not already present):
+```yaml
+      - hostPath: /home/tostinat/development/<app-name>/configs
+        containerPath: /home/tostinat/development/<app-name>/configs
+```
+
+And create the directory on the host before starting the cluster:
+```bash
+mkdir -p ~/development/<app-name>/configs
+```
+
+**Large data volume** (e.g. `/data` on the Seagate) — use the existing seagate mount (already in `kind-config.yaml`), no extra extraMount needed:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: <app-name>-data
+spec:
+  capacity:
+    storage: 2Ti
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  hostPath:
+    path: /mnt/seagate_2tb/media_server/data
+  claimRef:
+    name: <app-name>-data
+    namespace: <app-name>
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: <app-name>-data
+  namespace: <app-name>
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Ti
+  storageClassName: ""
+  volumeName: <app-name>-data
 ```
 
 ### `k8s/service.yaml`
@@ -253,6 +333,35 @@ logs:
         --all-containers --prefix --follow \
         -l app=<app-name>
 
+# Port-forward to the app's UI or primary port (runs in background).
+# Always target the pod directly — svc/ port-forward is less reliable in kind.
+forward:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    POD=$(kubectl get pod -n "{{namespace}}" --context "kind-{{cluster}}" \
+        -l app=<app-name> -o jsonpath='{.items[0].metadata.name}')
+    if [ -z "$POD" ]; then
+        echo "✗ No running <app-name> pod found." >&2; exit 1
+    fi
+    kubectl port-forward -n "{{namespace}}" --context "kind-{{cluster}}" \
+        "pod/$POD" <port>:<port> >/tmp/<app-name>-forward.log 2>&1 &
+    echo $! > /tmp/<app-name>-forward.pid
+    echo "✓ Port-forward running in background (PID $(cat /tmp/<app-name>-forward.pid))"
+    echo "  Open:  http://localhost:<port>"
+    echo "  Stop:  just forward-stop"
+    echo "  Logs:  tail /tmp/<app-name>-forward.log"
+
+# Stop the background port-forward
+forward-stop:
+    #!/usr/bin/env bash
+    if [ ! -f /tmp/<app-name>-forward.pid ]; then
+        echo "No port-forward PID file found — nothing to stop." >&2; exit 1
+    fi
+    kill "$(cat /tmp/<app-name>-forward.pid)" 2>/dev/null \
+        && echo "✓ Port-forward stopped." \
+        || echo "Process already stopped."
+    rm /tmp/<app-name>-forward.pid
+
 # Remove all app resources from the cluster
 teardown:
     kubectl delete -f k8s/ --context "kind-{{cluster}}" --ignore-not-found
@@ -261,8 +370,24 @@ teardown:
 
 Rules:
 - Replace every occurrence of `<app-name>` with the real app name
+- Replace `<port>` in `open` with the app's primary UI port
 - If the app has no secrets, remove the `secret` recipe entirely
+- Always use `pod/$POD` in port-forward, not `svc/<app-name>` — service-level port-forward is unreliable in kind
 - Do not add app-specific recipes to `~/development/kubernetes/justfile`
+
+### Optional: `restart` recipe
+
+If the app may need a pod restart after manual config edits, add a `restart` recipe:
+
+```just
+# Restart the pod
+restart:
+    kubectl rollout restart deployment/<app-name> \
+        -n "{{namespace}}" --context "kind-{{cluster}}"
+    kubectl rollout status deployment/<app-name> \
+        -n "{{namespace}}" --context "kind-{{cluster}}"
+    echo "✓ <app-name> restarted."
+```
 
 ---
 
@@ -305,7 +430,7 @@ cd ~/development/<app-name>
 just --list
 ```
 
-Expected output should show: `default`, `deploy`, `secret` (if applicable), `logs`, `teardown`.
+Expected output should show: `default`, `deploy`, `secret` (if applicable), `logs`, `forward`, `teardown`.
 
 ---
 
@@ -329,6 +454,6 @@ Before finishing, verify:
 - [ ] `~/development/<app-name>/k8s/namespace.yaml` exists
 - [ ] `~/development/<app-name>/k8s/deployment.yaml` uses image `localhost:5001/<app-name>:dev`
 - [ ] `~/development/<app-name>/k8s/service.yaml` exposes correct ports
-- [ ] `~/development/<app-name>/justfile` has `deploy`, `logs`, `teardown` recipes
+- [ ] `~/development/<app-name>/justfile` has `deploy`, `logs`, `forward`, `teardown` recipes
 - [ ] `~/development/kubernetes/apps/<app-name>.yaml` exists
 - [ ] `just --list` runs without errors from the app directory

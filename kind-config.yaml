@@ -1,5 +1,29 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+    extraMounts:
+      # Required for qbittorrent/sonarr/radarr data PV (hostPath: /mnt/seagate_2tb/media_server/data)
+      - hostPath: /mnt/seagate_2tb/media_server/data
+        containerPath: /mnt/seagate_2tb/media_server/data
+      # App config directories — each app's configs/ folder is mounted directly into the node.
+      # This means app settings persist on the host across cluster resets with no backup/restore needed.
+      # IMPORTANT: these directories must exist on the host before running 'just start' / 'just provision'.
+      - hostPath: /home/tostinat/development/prowlarr/configs
+        containerPath: /home/tostinat/development/prowlarr/configs
+      - hostPath: /home/tostinat/development/sonarr/configs
+        containerPath: /home/tostinat/development/sonarr/configs
+      - hostPath: /home/tostinat/development/radarr/configs
+        containerPath: /home/tostinat/development/radarr/configs
+      - hostPath: /home/tostinat/development/qbittorrent/configs
+        containerPath: /home/tostinat/development/qbittorrent/configs
 containerdConfigPatches:
   - |-
     [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]

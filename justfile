@@ -17,6 +17,30 @@ default:
 
 # ── Cluster ──────────────────────────────────────────────────────────────────
 
+# Rebuild cluster from scratch and reinstall cluster-level tooling (run after a reset)
+provision:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=> Step 1/3: Starting cluster + registry..."
+    just start
+    echo ""
+    echo "=> Step 2/3: Installing ArgoCD..."
+    just argocd-install
+    echo ""
+    echo "=> Step 3/3: Installing Kubernetes Dashboard..."
+    just dashboard-install
+    echo ""
+    echo "✓ Cluster provisioned. Now redeploy your apps in this order:"
+    echo ""
+    echo "  cd ~/development/nordlynx               && just secret && just deploy"
+    echo "  cd ~/development/caddy                  && just secret && just deploy"
+    echo "  cd ~/development/flaresolverr           && just deploy"
+    echo "  cd ~/development/prowlarr               && just deploy"
+    echo "  cd ~/development/radarr                 && just deploy"
+    echo "  cd ~/development/sonarr                 && just deploy"
+    echo "  cd ~/development/qbittorrent            && just deploy"
+    echo "  cd ~/development/nellis_auction_monitor && just secret && just deploy"
+
 # Start (or resume) the cluster + registry; auto-starts ArgoCD port-forward if installed
 start:
     #!/usr/bin/env bash
