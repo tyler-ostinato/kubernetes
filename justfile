@@ -24,9 +24,9 @@ provision:
     echo "=> Step 1/3: Starting cluster + registry..."
     just start
     echo ""
-    echo "=> Step 2/3: Installing ArgoCD..."
-    just argocd-install
-    echo ""
+    # echo "=> Step 2/3: Installing ArgoCD..."
+    # just argocd-install
+    # echo ""
     echo "=> Step 3/3: Installing Kubernetes Dashboard..."
     just dashboard-install
     echo ""
@@ -69,9 +69,9 @@ start:
     fi
     kubectl config use-context "kind-{{cluster}}" &>/dev/null
     echo "✓ kubectl context → kind-{{cluster}}"
-    if kubectl get namespace "{{argocd_ns}}" &>/dev/null; then
-        just argocd
-    fi
+    # if kubectl get namespace "{{argocd_ns}}" &>/dev/null; then
+    #     just argocd
+    # fi
 
 # Stop the cluster + registry (data preserved)
 stop:
