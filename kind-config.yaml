@@ -10,9 +10,9 @@ nodes:
         hostPort: 443
         protocol: TCP
     extraMounts:
-      # Required for qbittorrent/sonarr/radarr data PV (hostPath: /mnt/seagate_2tb/media_server/data)
-      - hostPath: /mnt/seagate_2tb/media_server/data
-        containerPath: /mnt/seagate_2tb/media_server/data
+      # Required for qbittorrent/sonarr/radarr data PV (hostPath: /mnt/media_pool)
+      - hostPath: /mnt/media_pool
+        containerPath: /mnt/media_pool
       # Entire development directory — all app configs/ folders are accessible without
       # needing per-app entries here. Adding a new app never requires a cluster reset.
       - hostPath: /home/tostinat/development
