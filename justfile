@@ -30,16 +30,7 @@ provision:
     echo "=> Step 3/3: Installing Kubernetes Dashboard..."
     just dashboard-install
     echo ""
-    echo "✓ Cluster provisioned. Now redeploy your apps in this order:"
-    echo ""
-    echo "  cd ~/development/nordlynx               && just secret && just deploy"
-    echo "  cd ~/development/caddy                  && just secret && just deploy"
-    echo "  cd ~/development/flaresolverr           && just deploy"
-    echo "  cd ~/development/prowlarr               && just deploy"
-    echo "  cd ~/development/radarr                 && just deploy"
-    echo "  cd ~/development/sonarr                 && just deploy"
-    echo "  cd ~/development/qbittorrent            && just deploy"
-    echo "  cd ~/development/nellis_auction_monitor && just secret && just deploy"
+    echo "✓ Cluster provisioned. Run 'just deploy-apps' to redeploy all apps."
 
 # Start (or resume) the cluster + registry; auto-starts ArgoCD port-forward if installed
 start:
@@ -144,6 +135,31 @@ reset:
     kind delete cluster --name "{{cluster}}"
     echo "✓ Cluster '{{cluster}}' deleted."
     echo "  Registry is still running. Use 'just registry-stop' to stop it or 'just start' to recreate the cluster."
+
+# ── Apps ─────────────────────────────────────────────────────────────────────
+
+# Deploy all apps in the correct order (runs just secret where required)
+deploy-apps:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=> Creating namespaces..."
+    for app in nordlynx caddy flaresolverr prowlarr radarr sonarr qbittorrent nellis_auction_monitor jellyfin config-backup home-assistant; do
+        kubectl apply -f "${HOME}/development/$app/k8s/namespace.yaml" --context "kind-{{cluster}}"
+    done
+    echo ""
+    echo "=> Deploying all apps..."
+    echo ""
+    for app in nordlynx caddy nellis_auction_monitor config-backup home-assistant; do
+        echo "=> [$app] applying secret + deploy..."
+        (cd "${HOME}/development/$app" && just secret && just deploy)
+        echo ""
+    done
+    for app in flaresolverr prowlarr radarr sonarr qbittorrent jellyfin; do
+        echo "=> [$app] deploying..."
+        (cd "${HOME}/development/$app" && just deploy)
+        echo ""
+    done
+    echo "✓ All apps deployed."
 
 # ── Registry ─────────────────────────────────────────────────────────────────
 
@@ -337,6 +353,31 @@ dashboard:
         -n "{{dashboard_ns}}" --context "kind-{{cluster}}" \
         -o jsonpath="{.data.token}" | base64 -d
     echo ""
+
+# Generate a kubeconfig file for dashboard login (upload via the "Kubeconfig" option)
+dashboard-kubeconfig:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    outfile="${HOME}/.kube/dashboard-admin.kubeconfig"
+    token=$(kubectl get secret admin-user-token \
+        -n "{{dashboard_ns}}" --context "kind-{{cluster}}" \
+        -o jsonpath="{.data.token}" | base64 -d)
+    server=$(kubectl config view --context "kind-{{cluster}}" \
+        -o jsonpath="{.clusters[?(@.name=='kind-{{cluster}}')].cluster.server}")
+    tmpca=$(mktemp)
+    kubectl config view --raw --context "kind-{{cluster}}" \
+        -o jsonpath="{.clusters[?(@.name=='kind-{{cluster}}')].cluster.certificate-authority-data}" \
+        | base64 -d > "$tmpca"
+    KUBECONFIG="$outfile" kubectl config set-cluster "kind-{{cluster}}" \
+        --server="$server" --certificate-authority="$tmpca" --embed-certs=true
+    KUBECONFIG="$outfile" kubectl config set-credentials admin-user --token="$token"
+    KUBECONFIG="$outfile" kubectl config set-context "admin-user@kind-{{cluster}}" \
+        --cluster="kind-{{cluster}}" --user=admin-user
+    KUBECONFIG="$outfile" kubectl config use-context "admin-user@kind-{{cluster}}"
+    rm -f "$tmpca"
+    chmod 600 "$outfile"
+    echo "✓ Dashboard kubeconfig written to $outfile"
+    echo "  In the dashboard login screen, select 'Kubeconfig' and upload that file."
 
 # ── Logs ─────────────────────────────────────────────────────────────────────
 
