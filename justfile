@@ -149,7 +149,7 @@ deploy-apps:
     echo ""
     echo "=> Deploying all apps..."
     echo ""
-    for app in nordlynx caddy nellis_auction_monitor config-backup home-assistant; do
+    for app in nordlynx caddy nellis_auction_monitor config-backup home-assistant mood-lighting; do
         echo "=> [$app] applying secret + deploy..."
         (cd "${HOME}/development/$app" && just secret && just deploy)
         echo ""
